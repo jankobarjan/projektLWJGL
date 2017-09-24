@@ -4,10 +4,11 @@ import org.joml.Matrix4f;
 
 public class StaticShader extends ShaderProgram {
 
-    private static final String VERTEX_FILE = "src/pl/kobarjan/shaders/vertexShader.txt";
-    private static final String FRAGMENT_FILE = "src/pl/kobarjan/shaders/fragmentShader.txt";
+    private static final String VERTEX_FILE = "src/pl/kobarjan/shaders/vertexShader.glsl";
+    private static final String FRAGMENT_FILE = "src/pl/kobarjan/shaders/fragmentShader.glsl";
 
-    private int location_transformationMatrix;
+    private int location_worldMatrix;
+    private int location_projectionMatrix;
 
     public StaticShader() {
         super(VERTEX_FILE, FRAGMENT_FILE);
@@ -15,7 +16,12 @@ public class StaticShader extends ShaderProgram {
 
     @Override
     protected void getAllUniformLocation() {
-        location_transformationMatrix = super.getUniformLocation("transformationMatrix");
+        location_worldMatrix = super.getUniformLocation("worldMatrix");
+        location_projectionMatrix = super.getUniformLocation("projectionMatrix");
+    }
+
+    public int getUniformLocation(String uniformName) {
+        return super.getUniformLocation(uniformName);
     }
 
     @Override
@@ -24,7 +30,7 @@ public class StaticShader extends ShaderProgram {
         super.bindAttribute(1,"textureCoords");
     }
 
-    public void loadTransformationMatrix(Matrix4f matrix) {
-        super.loadMatrix(location_transformationMatrix, matrix);
+    public void loadTransformationMatrix(Matrix4f matrix, int location) {
+        super.loadMatrix(location, matrix);
     }
 }

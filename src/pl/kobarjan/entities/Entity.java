@@ -5,81 +5,26 @@ import pl.kobarjan.models.TexturedModel;
 
 public class Entity {
 
-    private TexturedModel model;
+    private final TexturedModel model;
     private Vector3f position;
-    private float rotX, rotY, rotZ;
-    private float angle;
     private float scale;
+    private final Vector3f rotation;
 
-    public Entity(TexturedModel model, Vector3f position, float rotX, float rotY, float rotZ, float scale, float angle) {
+    public Entity(TexturedModel model) {
         this.model = model;
-        this.position = position;
-        this.rotX = rotX;
-        this.rotY = rotY;
-        this.rotZ = rotZ;
-        this.scale = scale;
-        this.angle = angle;
-    }
-
-    public void increasePosition(float dx, float dy, float dz) {
-        this.position.x+=dx;
-        this.position.y+=dy;
-        this.position.z+=dz;
-    }
-
-    public void increaseRotation(float dx, float dy, float dz,float angle) {
-        this.rotX+=dx;
-        this.rotY+=dy;
-        this.rotZ+=dz;
-        this.angle+=angle;
-    }
-
-    public float getAngle() {
-        return angle;
-    }
-
-    public void setAngle(float angle) {
-        this.angle = angle;
-    }
-
-    public TexturedModel getModel() {
-        return model;
-    }
-
-    public void setModel(TexturedModel model) {
-        this.model = model;
+        position = new Vector3f(0, 0, 0);
+        scale = 5f;
+        rotation = new Vector3f(0, 0, 0);
     }
 
     public Vector3f getPosition() {
         return position;
     }
 
-    public void setPosition(Vector3f position) {
-        this.position = position;
-    }
-
-    public float getRotX() {
-        return rotX;
-    }
-
-    public void setRotX(float rotX) {
-        this.rotX = rotX;
-    }
-
-    public float getRotY() {
-        return rotY;
-    }
-
-    public void setRotY(float rotY) {
-        this.rotY = rotY;
-    }
-
-    public float getRotZ() {
-        return rotZ;
-    }
-
-    public void setRotZ(float rotZ) {
-        this.rotZ = rotZ;
+    public void setPosition(float x,float y,float z){
+        position.x = x;
+        position.y = y;
+        position.z = z;
     }
 
     public float getScale() {
@@ -88,5 +33,19 @@ public class Entity {
 
     public void setScale(float scale) {
         this.scale = scale;
+    }
+
+    public Vector3f getRotation() {
+        return rotation;
+    }
+
+    public void setRotation(float x, float y, float z) {
+        rotation.x = x;
+        rotation.y = y;
+        rotation.z = z;
+    }
+
+    public TexturedModel getModel() {
+        return model;
     }
 }
