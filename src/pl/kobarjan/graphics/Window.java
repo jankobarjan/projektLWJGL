@@ -2,18 +2,21 @@ package pl.kobarjan.graphics;
 
 import org.joml.Vector2f;
 import org.joml.Vector3f;
+import org.lwjgl.BufferUtils;
+import org.lwjgl.glfw.GLFWCursorPosCallback;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.glfw.GLFWKeyCallback;
 import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.system.MemoryUtil;
-import pl.kobarjan.Input.MouseInput;
+//import pl.kobarjan.Input.MouseInput;
 import pl.kobarjan.entities.Entity;
 import pl.kobarjan.models.RawModel;
 import pl.kobarjan.models.TexturedModel;
 import pl.kobarjan.shaders.StaticShader;
 import pl.kobarjan.textures.ModelTexture;
 
+import java.nio.DoubleBuffer;
 import java.nio.IntBuffer;
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT;
@@ -79,22 +82,18 @@ public class Window implements Runnable {
     RawModel model;
     ModelTexture texture;
     TexturedModel texturedModel;
+    Vector2f rotVec;
     Entity entity;
     Entity[] entities;
-    MouseInput mouseInput;
-    Vector3f cameraInc;
     Camera camera;
+    double xPos = 0;
+    double yPos = 0;
+    double previousX = 1;
+    double previousY = 1;
+    //MouseInput mouseInput;
 
     private static GLFWErrorCallback errorCallback = GLFWErrorCallback.createPrint(System.err);
 
-    private static GLFWKeyCallback keyCallback = new GLFWKeyCallback() {
-        @Override
-        public void invoke(long window, int key, int scancode, int action, int mods) {
-            if(key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
-                glfwSetWindowShouldClose(window, true);
-            }
-        }
-    };
 
     public Window(){
         init();
@@ -106,12 +105,15 @@ public class Window implements Runnable {
         if(!glfwInit()) {
             throw new IllegalStateException("Unable to initialize GLFW");
         }
-
         window = glfwCreateWindow(1280,720,"Window", 0, 0);
         if(window == 0) {
             glfwTerminate();
             throw new RuntimeException("Failed to create window");
         }
+
+        //mouseInput = new MouseInput(1.5f);
+        //glfwSetCursorPosCallback(window, mouseInput);
+
 
         GLFWVidMode vidMode = glfwGetVideoMode(glfwGetPrimaryMonitor());
 
@@ -120,10 +122,46 @@ public class Window implements Runnable {
                 (vidMode.height()-720)/2
         );
 
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+        GLFWCursorPosCallback cursorPosCallback;
+        glfwSetCursorPosCallback(window, cursorPosCallback = new GLFWCursorPosCallback() {
+
+                    @Override
+                    public void invoke(long window, double xpos, double ypos) {
+                        xPos = xpos;
+                        yPos = ypos;
+                    }
+                });
+
         glfwMakeContextCurrent(window);
         GL.createCapabilities();
         glfwSwapInterval(1);
-        glfwSetKeyCallback(window, keyCallback);
+        GLFWKeyCallback keyCallback;
+        glfwSetKeyCallback(window, keyCallback = new GLFWKeyCallback() {
+            @Override
+            public void invoke(long window, int key, int scancode, int action, int mods) {
+                if(key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+                    glfwSetWindowShouldClose(window, true);
+                }
+                if(key == GLFW_KEY_W && action != GLFW_RELEASE) {
+                    camera.movePosition(0, (float) (camera.getPosition().y + 0.01),0);
+                }
+                if(key == GLFW_KEY_S && action != GLFW_RELEASE) {
+                    camera.movePosition(0, (float) (camera.getPosition().y + -0.01),0);
+                }
+                if(key == GLFW_KEY_A && action != GLFW_RELEASE) {
+                    camera.movePosition((float) (camera.getPosition().x + -0.01), 0,0);
+                }
+                if(key == GLFW_KEY_D && action != GLFW_RELEASE) {
+                    camera.movePosition((float) (camera.getPosition().x + 0.01), 0,0);
+                }
+
+
+
+            }
+        });
+        rotVec = new Vector2f();
 
         loader = new Loader();
         renderer = new Renderer();
@@ -140,25 +178,22 @@ public class Window implements Runnable {
 
         entities = new Entity[]{entity};
 
-        mouseInput = new MouseInput();
-        mouseInput.init(window);
-
         camera = new Camera();
 
-        entity.setPosition(0,3,-9);
+        entity.setPosition(0,0,0);
         //entity.setRotation(0,0,0);
         //entity.setScale();
     }
     private void input() {
-        mouseInput.input(window);
+        rotVec.x = (float) (xPos - previousX);
+        rotVec.y = (float) (yPos - previousY);
+        System.out.println("CursorPos: " + rotVec.x + " , " + rotVec.y);
+        previousX = xPos;
+        previousY = yPos;
+        //rotVec = mouseInput.getRotVector();
+        camera.moveRotation((float)  Math.toRadians(rotVec.y),(float)   Math.toRadians(rotVec.x), 0);
+    }
 
-    }
-    private void update() {
-        if (mouseInput.isRightButtonPressed()) {
-            Vector2f rotVec = mouseInput.getDisplayVec();
-            camera.moveRotation(rotVec.x * 1.05f, rotVec.y * 1.05f, 0);
-        }
-    }
     private void loop() {
         while(!glfwWindowShouldClose(window)) {
 
@@ -187,55 +222,6 @@ public class Window implements Runnable {
 
             width.flip();
             height.flip();
-
-            sync(30);
-        }
-    }
-    private long variableYieldTime, lastTime;
-
-    /**
-     * An accurate sync method that adapts automatically
-     * to the system it runs on to provide reliable results.
-     *
-     * @param fps The desired frame rate, in frames per second
-     * @author kappa (On the LWJGL Forums)
-     */
-    public void sync(int fps) {
-        if (fps <= 0) return;
-
-        long sleepTime = 1000000000 / fps; // nanoseconds to sleep this frame
-        // yieldTime + remainder micro & nano seconds if smaller than sleepTime
-        long yieldTime = Math.min(sleepTime, variableYieldTime + sleepTime % (1000*1000));
-        long overSleep = 0; // time the sync goes over by
-
-        try {
-            while (true) {
-                long t = System.nanoTime() - lastTime;
-
-                if (t < sleepTime - yieldTime) {
-                    Thread.sleep(1);
-                }else if (t < sleepTime) {
-                    // burn the last few CPU cycles to ensure accuracy
-                    Thread.yield();
-                }else {
-                    overSleep = t - sleepTime;
-                    break; // exit while loop
-                }
-            }
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }finally{
-            lastTime = System.nanoTime() - Math.min(overSleep, sleepTime);
-
-            // auto tune the time sync should yield
-            if (overSleep > variableYieldTime) {
-                // increase by 200 microseconds (1/5 a ms)
-                variableYieldTime = Math.min(variableYieldTime + 200*1000, sleepTime);
-            }
-            else if (overSleep < variableYieldTime - 200*1000) {
-                // decrease by 2 microseconds
-                variableYieldTime = Math.max(variableYieldTime - 2*1000, 0);
-            }
         }
     }
     private void cleanUp() {
@@ -246,7 +232,6 @@ public class Window implements Runnable {
         loader.cleanUp();
 
         glfwDestroyWindow(window);
-        keyCallback.free();
 
         glfwTerminate();
         errorCallback.free();
